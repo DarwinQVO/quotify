@@ -127,7 +127,6 @@ export function TranscriptPane({
     if (isDragging && selectedRange) {
       const selectedWordsCount = selectedRange.end - selectedRange.start + 1
       if (selectedWordsCount >= 3) { // Minimum 3 words for a quote
-        const rect = (event.target as HTMLElement).getBoundingClientRect()
         setExtractButtonPosition({
           x: event.clientX,
           y: event.clientY - 50
