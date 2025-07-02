@@ -194,10 +194,12 @@ fn generate_deep_link(url: String, timestamp: f64) -> String {
 
 #[tauri::command]
 async fn save_app_data(app: tauri::AppHandle, key: String, data: serde_json::Value) -> Result<(), String> {
-    let stores = app.state::<tauri_plugin_store::StoreCollection<tauri::Wry>>();
-    let path = PathBuf::from("quotify-data.json");
+    use tauri_plugin_store::StoreBuilder;
     
-    let mut store = stores.with_store(path).map_err(|e| format!("Store error: {}", e))?;
+    let mut store = StoreBuilder::new(&app, "quotify-data.json")
+        .build()
+        .map_err(|e| format!("Store error: {}", e))?;
+    
     store.insert(key, data).map_err(|e| format!("Insert error: {}", e))?;
     store.save().map_err(|e| format!("Save error: {}", e))?;
     
@@ -206,19 +208,24 @@ async fn save_app_data(app: tauri::AppHandle, key: String, data: serde_json::Val
 
 #[tauri::command]
 async fn load_app_data(app: tauri::AppHandle, key: String) -> Result<Option<serde_json::Value>, String> {
-    let stores = app.state::<tauri_plugin_store::StoreCollection<tauri::Wry>>();
-    let path = PathBuf::from("quotify-data.json");
+    use tauri_plugin_store::StoreBuilder;
     
-    let store = stores.with_store(path).map_err(|e| format!("Store error: {}", e))?;
+    let store = StoreBuilder::new(&app, "quotify-data.json")
+        .build()
+        .map_err(|e| format!("Store error: {}", e))?;
+    
     Ok(store.get(&key).cloned())
 }
 
 #[tauri::command]
 async fn clear_app_data(app: tauri::AppHandle) -> Result<(), String> {
-    let stores = app.state::<tauri_plugin_store::StoreCollection<tauri::Wry>>();
-    let path = PathBuf::from("quotify-data.json");
+    use tauri_plugin_store::StoreBuilder;
     
-    let mut store = stores.with_store(path).map_err(|e| format!("Store error: {}", e))?;
+    
+    let mut store = StoreBuilder::new(&app, "quotify-data.json")
+        .build()
+        .map_err(|e| format!("Store error: {}", e))?;
+    
     store.clear().map_err(|e| format!("Clear error: {}", e))?;
     store.save().map_err(|e| format!("Save error: {}", e))?;
     
