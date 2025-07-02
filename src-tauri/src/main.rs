@@ -103,47 +103,36 @@ async fn transcribe_audio(url: String, api_key: String) -> Result<TranscriptionR
         return Err("Only YouTube URLs are supported for security reasons".to_string());
     }
 
-    // Get the path to bundled yt-dlp and ffmpeg with multiple fallback strategies
+    // Get the path to bundled yt-dlp and ffmpeg with correct macOS bundle structure
     let (yt_dlp_path, ffmpeg_path) = if cfg!(target_os = "macos") {
         let current_exe = std::env::current_exe().map_err(|e| format!("Failed to get current exe: {}", e))?;
         
-        // Try multiple locations for bundled binaries
-        let possible_paths = vec![
-            // Standard app bundle structure
-            current_exe.parent().unwrap().parent().unwrap().join("Resources"),
-            // Development/debug structure
-            current_exe.parent().unwrap().join("../../../src-tauri/resources").canonicalize().unwrap_or_default(),
-            // Alternative bundle structure
-            current_exe.parent().unwrap().join("resources"),
-        ];
+        // Correct macOS app bundle structure: Contents/MacOS/quotify -> Contents/Resources/resources/
+        let app_contents = current_exe.parent().unwrap().parent().unwrap();
+        let resources_path = app_contents.join("Resources").join("resources");
         
-        let mut yt_dlp = None;
-        let mut ffmpeg = None;
+        let yt_dlp_bundled = resources_path.join("yt-dlp");
+        let ffmpeg_bundled = resources_path.join("ffmpeg");
         
-        for path in possible_paths {
-            if path.exists() {
-                let yt_dlp_candidate = path.join("yt-dlp");
-                let ffmpeg_candidate = path.join("ffmpeg");
-                
-                if yt_dlp_candidate.exists() && yt_dlp.is_none() {
-                    yt_dlp = Some(yt_dlp_candidate);
-                }
-                if ffmpeg_candidate.exists() && ffmpeg.is_none() {
-                    ffmpeg = Some(ffmpeg_candidate);
-                }
-            }
-        }
+        let yt_dlp = if yt_dlp_bundled.exists() {
+            yt_dlp_bundled
+        } else {
+            // Fallback to system or development paths
+            which::which("yt-dlp").unwrap_or_else(|_| 
+                std::path::PathBuf::from("src-tauri/resources/yt-dlp")
+            )
+        };
         
-        let final_yt_dlp = yt_dlp.unwrap_or_else(|| {
-            // Last resort: try system PATH
-            which::which("yt-dlp").unwrap_or_else(|_| std::path::PathBuf::from("yt-dlp"))
-        });
+        let ffmpeg = if ffmpeg_bundled.exists() {
+            ffmpeg_bundled
+        } else {
+            // Fallback to system or development paths
+            which::which("ffmpeg").unwrap_or_else(|_| 
+                std::path::PathBuf::from("src-tauri/resources/ffmpeg")
+            )
+        };
         
-        let final_ffmpeg = ffmpeg.unwrap_or_else(|| {
-            which::which("ffmpeg").unwrap_or_else(|_| std::path::PathBuf::from("ffmpeg"))
-        });
-        
-        (final_yt_dlp, final_ffmpeg)
+        (yt_dlp, ffmpeg)
     } else {
         (std::path::PathBuf::from("yt-dlp"), std::path::PathBuf::from("ffmpeg"))
     };
