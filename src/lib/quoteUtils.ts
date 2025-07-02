@@ -39,14 +39,14 @@ export function createQuoteFromSelection(
 ): Omit<Quote, 'id'> {
   // Use proper curly quotes (Unicode characters U+201C and U+201D)
   const cleanText = selectedText.trim()
-  const curlyQuote = `"${cleanText}"`
+  // const curlyQuote = `"${cleanText}"` // Unused variable
   
   // Parse the publish_date properly (format: YYYYMMDD) and format as (Mon YYYY)
   let dateStr = new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
   
-  if (metadata.publish_date && metadata.publish_date.length >= 8) {
-    const year = metadata.publish_date.substring(0, 4)
-    const month = metadata.publish_date.substring(4, 6)
+  if (metadata.publishDate && metadata.publishDate.length >= 8) {
+    const year = metadata.publishDate.substring(0, 4)
+    const month = metadata.publishDate.substring(4, 6)
     
     if (!isNaN(parseInt(year)) && !isNaN(parseInt(month))) {
       const date = new Date(parseInt(year), parseInt(month) - 1) // month is 0-indexed

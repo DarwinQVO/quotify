@@ -4,7 +4,7 @@ import { Download, Trash2, Copy, MoreHorizontal } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { QuoteCard } from "@/components/quote-card"
 import { Quote } from "@/types"
-import { exportQuotesToText } from "@/lib/quoteUtils"
+// import { exportQuotesToText } from "@/lib/quoteUtils" // Unused import
 import { appendQuotesToGoogleDoc, authenticateWithGoogle } from "@/lib/googleDocs"
 
 interface QuotesColumnProps {

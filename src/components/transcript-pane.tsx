@@ -166,9 +166,9 @@ export function TranscriptPane({
     // Override citation with actual speaker name and proper date format
     let dateStr = new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
     
-    if (source.metadata.publish_date && source.metadata.publish_date.length >= 8) {
-      const year = source.metadata.publish_date.substring(0, 4)
-      const month = source.metadata.publish_date.substring(4, 6)
+    if (source.metadata.publishDate && source.metadata.publishDate.length >= 8) {
+      const year = source.metadata.publishDate.substring(0, 4)
+      const month = source.metadata.publishDate.substring(4, 6)
       
       if (!isNaN(parseInt(year)) && !isNaN(parseInt(month))) {
         const date = new Date(parseInt(year), parseInt(month) - 1) // month is 0-indexed
