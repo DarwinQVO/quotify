@@ -103,17 +103,44 @@ async fn transcribe_audio(url: String, api_key: String) -> Result<TranscriptionR
         return Err("Only YouTube URLs are supported for security reasons".to_string());
     }
 
-    // Use yt-dlp directly
-    let download_output = Command::new("yt-dlp")
+    // Get the path to bundled yt-dlp and ffmpeg
+    let (yt_dlp_path, ffmpeg_path) = if cfg!(target_os = "macos") {
+        // Use bundled binaries from resources
+        let resources_dir = std::env::current_exe()
+            .ok()
+            .and_then(|exe| exe.parent().map(|p| p.to_path_buf()))
+            .and_then(|p| p.parent().map(|p| p.to_path_buf()))
+            .map(|p| p.join("Resources"));
+        
+        let yt_dlp = resources_dir
+            .as_ref()
+            .map(|p| p.join("yt-dlp"))
+            .filter(|p| p.exists())
+            .unwrap_or_else(|| std::path::PathBuf::from("yt-dlp"));
+            
+        let ffmpeg = resources_dir
+            .as_ref()
+            .map(|p| p.join("ffmpeg"))
+            .filter(|p| p.exists())
+            .unwrap_or_else(|| std::path::PathBuf::from("ffmpeg"));
+            
+        (yt_dlp, ffmpeg)
+    } else {
+        (std::path::PathBuf::from("yt-dlp"), std::path::PathBuf::from("ffmpeg"))
+    };
+    
+    // Use yt-dlp with bundled ffmpeg
+    let download_output = Command::new(&yt_dlp_path)
         .args(&[
             "--extract-audio",
             "--audio-format", "mp3",
             "--audio-quality", "192",
+            "--ffmpeg-location", &ffmpeg_path.to_string_lossy(),
             "--output", &audio_path.to_string_lossy(),
             &url
         ])
         .output()
-        .map_err(|e| format!("Failed to execute yt-dlp: {}. Make sure yt-dlp is installed.", e))?;
+        .map_err(|e| format!("Failed to execute yt-dlp: {}", e))?;
 
     if !download_output.status.success() {
         let error = String::from_utf8_lossy(&download_output.stderr);

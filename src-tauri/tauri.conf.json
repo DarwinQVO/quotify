@@ -41,7 +41,8 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "targets": "all"
+    "targets": "all",
+    "resources": ["resources/*"]
   },
   "plugins": {
     "updater": {
