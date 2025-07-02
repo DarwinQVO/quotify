@@ -103,28 +103,47 @@ async fn transcribe_audio(url: String, api_key: String) -> Result<TranscriptionR
         return Err("Only YouTube URLs are supported for security reasons".to_string());
     }
 
-    // Get the path to bundled yt-dlp and ffmpeg
+    // Get the path to bundled yt-dlp and ffmpeg with multiple fallback strategies
     let (yt_dlp_path, ffmpeg_path) = if cfg!(target_os = "macos") {
-        // Use bundled binaries from resources
-        let resources_dir = std::env::current_exe()
-            .ok()
-            .and_then(|exe| exe.parent().map(|p| p.to_path_buf()))
-            .and_then(|p| p.parent().map(|p| p.to_path_buf()))
-            .map(|p| p.join("Resources"));
+        let current_exe = std::env::current_exe().map_err(|e| format!("Failed to get current exe: {}", e))?;
         
-        let yt_dlp = resources_dir
-            .as_ref()
-            .map(|p| p.join("yt-dlp"))
-            .filter(|p| p.exists())
-            .unwrap_or_else(|| std::path::PathBuf::from("yt-dlp"));
-            
-        let ffmpeg = resources_dir
-            .as_ref()
-            .map(|p| p.join("ffmpeg"))
-            .filter(|p| p.exists())
-            .unwrap_or_else(|| std::path::PathBuf::from("ffmpeg"));
-            
-        (yt_dlp, ffmpeg)
+        // Try multiple locations for bundled binaries
+        let possible_paths = vec![
+            // Standard app bundle structure
+            current_exe.parent().unwrap().parent().unwrap().join("Resources"),
+            // Development/debug structure
+            current_exe.parent().unwrap().join("../../../src-tauri/resources").canonicalize().unwrap_or_default(),
+            // Alternative bundle structure
+            current_exe.parent().unwrap().join("resources"),
+        ];
+        
+        let mut yt_dlp = None;
+        let mut ffmpeg = None;
+        
+        for path in possible_paths {
+            if path.exists() {
+                let yt_dlp_candidate = path.join("yt-dlp");
+                let ffmpeg_candidate = path.join("ffmpeg");
+                
+                if yt_dlp_candidate.exists() && yt_dlp.is_none() {
+                    yt_dlp = Some(yt_dlp_candidate);
+                }
+                if ffmpeg_candidate.exists() && ffmpeg.is_none() {
+                    ffmpeg = Some(ffmpeg_candidate);
+                }
+            }
+        }
+        
+        let final_yt_dlp = yt_dlp.unwrap_or_else(|| {
+            // Last resort: try system PATH
+            which::which("yt-dlp").unwrap_or_else(|_| std::path::PathBuf::from("yt-dlp"))
+        });
+        
+        let final_ffmpeg = ffmpeg.unwrap_or_else(|| {
+            which::which("ffmpeg").unwrap_or_else(|_| std::path::PathBuf::from("ffmpeg"))
+        });
+        
+        (final_yt_dlp, final_ffmpeg)
     } else {
         (std::path::PathBuf::from("yt-dlp"), std::path::PathBuf::from("ffmpeg"))
     };
@@ -260,6 +279,37 @@ async fn clear_app_data(app: tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+#[tauri::command]
+async fn delete_source(app: tauri::AppHandle, source_id: String) -> Result<(), String> {
+    use tauri_plugin_store::StoreBuilder;
+    
+    let mut store = StoreBuilder::new(&app, "quotify-data.json")
+        .build()
+        .map_err(|e| format!("Store error: {}", e))?;
+    
+    // Get current sources
+    let sources: Vec<serde_json::Value> = store.get("sources")
+        .and_then(|v| v.as_array().cloned())
+        .unwrap_or_default();
+    
+    // Filter out the source to delete
+    let updated_sources: Vec<serde_json::Value> = sources
+        .into_iter()
+        .filter(|source| {
+            source.get("id")
+                .and_then(|id| id.as_str())
+                .map(|id| id != source_id)
+                .unwrap_or(true)
+        })
+        .collect();
+    
+    // Save updated sources
+    store.set("sources".to_string(), serde_json::Value::Array(updated_sources));
+    store.save().map_err(|e| format!("Save error: {:?}", e))?;
+    
+    Ok(())
+}
+
 fn add_speaker_identification(words: &mut Vec<TranscriptWord>) {
     if words.is_empty() {
         return;
@@ -326,7 +376,8 @@ fn main() {
             generate_deep_link,
             save_app_data,
             load_app_data,
-            clear_app_data
+            clear_app_data,
+            delete_source
         ])
         .setup(|_app| {
             // Auto-update disabled for now - will be configured later
