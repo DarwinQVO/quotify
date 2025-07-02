@@ -225,12 +225,23 @@
                     primaryText = 'Download Quotify';
                 }
                 
+                // Helper function to trigger direct download
+                function downloadFile(url, filename) {
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = filename || 'download';
+                    a.style.display = 'none';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                }
+                
                 // Set primary download button
                 const downloadBtn = document.getElementById('download-btn');
                 const downloadText = document.getElementById('download-text');
                 
                 if (primaryAsset) {
-                    downloadBtn.onclick = () => window.open(primaryAsset.browser_download_url, '_blank');
+                    downloadBtn.onclick = () => downloadFile(primaryAsset.browser_download_url, primaryAsset.name);
                     downloadText.textContent = primaryText;
                 } else {
                     downloadBtn.onclick = () => window.open('https://github.com/DarwinQVO/quotify/releases', '_blank');
@@ -238,18 +249,21 @@
                 }
                 
                 // Set alternative download links
-                document.getElementById('mac-link').onclick = () => {
-                    if (macAsset) window.open(macAsset.browser_download_url, '_blank');
+                document.getElementById('mac-link').onclick = (e) => {
+                    e.preventDefault();
+                    if (macAsset) downloadFile(macAsset.browser_download_url, macAsset.name);
                     else window.open('https://github.com/DarwinQVO/quotify/releases', '_blank');
                 };
                 
-                document.getElementById('windows-link').onclick = () => {
-                    if (windowsAsset) window.open(windowsAsset.browser_download_url, '_blank');
+                document.getElementById('windows-link').onclick = (e) => {
+                    e.preventDefault();
+                    if (windowsAsset) downloadFile(windowsAsset.browser_download_url, windowsAsset.name);
                     else window.open('https://github.com/DarwinQVO/quotify/releases', '_blank');
                 };
                 
-                document.getElementById('linux-link').onclick = () => {
-                    if (linuxAsset) window.open(linuxAsset.browser_download_url, '_blank');
+                document.getElementById('linux-link').onclick = (e) => {
+                    e.preventDefault();
+                    if (linuxAsset) downloadFile(linuxAsset.browser_download_url, linuxAsset.name);
                     else window.open('https://github.com/DarwinQVO/quotify/releases', '_blank');
                 };
                 
