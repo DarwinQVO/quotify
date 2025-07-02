@@ -103,15 +103,17 @@ async fn transcribe_audio(url: String, api_key: String) -> Result<TranscriptionR
         return Err("Only YouTube URLs are supported for security reasons".to_string());
     }
 
-    // Use Python yt-dlp script for maximum reliability
-    let download_output = Command::new("python3")
+    // Use yt-dlp directly
+    let download_output = Command::new("yt-dlp")
         .args(&[
-            "/Users/darwinborges/quotify/extract_audio.py",
-            &url,
-            &audio_path.to_string_lossy()
+            "--extract-audio",
+            "--audio-format", "mp3",
+            "--audio-quality", "192",
+            "--output", &audio_path.to_string_lossy(),
+            &url
         ])
         .output()
-        .map_err(|e| format!("Failed to execute audio extraction script: {}", e))?;
+        .map_err(|e| format!("Failed to execute yt-dlp: {}. Make sure yt-dlp is installed.", e))?;
 
     if !download_output.status.success() {
         let error = String::from_utf8_lossy(&download_output.stderr);
