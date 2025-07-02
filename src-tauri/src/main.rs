@@ -2,7 +2,6 @@ use serde::{Deserialize, Serialize};
 use std::process::Command;
 use tempfile::NamedTempFile;
 use tauri::Manager;
-use std::path::PathBuf;
 
 mod paths;
 use paths::ToolPaths;
@@ -200,8 +199,8 @@ async fn save_app_data(app: tauri::AppHandle, key: String, data: serde_json::Val
         .build()
         .map_err(|e| format!("Store error: {}", e))?;
     
-    store.insert(key, data).map_err(|e| format!("Insert error: {}", e))?;
-    store.save().map_err(|e| format!("Save error: {}", e))?;
+    store.set(key, data);
+    store.save().map_err(|e| format!("Save error: {:?}", e))?;
     
     Ok(())
 }
@@ -214,7 +213,7 @@ async fn load_app_data(app: tauri::AppHandle, key: String) -> Result<Option<serd
         .build()
         .map_err(|e| format!("Store error: {}", e))?;
     
-    Ok(store.get(&key).cloned())
+    Ok(store.get(&key))
 }
 
 #[tauri::command]
@@ -226,8 +225,8 @@ async fn clear_app_data(app: tauri::AppHandle) -> Result<(), String> {
         .build()
         .map_err(|e| format!("Store error: {}", e))?;
     
-    store.clear().map_err(|e| format!("Clear error: {}", e))?;
-    store.save().map_err(|e| format!("Save error: {}", e))?;
+    store.clear();
+    store.save().map_err(|e| format!("Save error: {:?}", e))?;
     
     Ok(())
 }
